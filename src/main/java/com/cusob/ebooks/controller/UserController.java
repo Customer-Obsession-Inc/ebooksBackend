@@ -1,22 +1,12 @@
 package com.cusob.ebooks.controller;
 
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.cusob.auth.AuthContext;
-import com.cusob.dto.ForgetPasswordDto;
-import com.cusob.dto.UpdatePasswordDto;
-import com.cusob.dto.UserDto;
-import com.cusob.dto.UserLoginDto;
-import com.cusob.entity.Minio;
-import com.cusob.entity.User;
-import com.cusob.result.Result;
-import com.cusob.service.MinioService;
-import com.cusob.service.UserService;
-import com.cusob.vo.UserLoginVo;
-import com.cusob.vo.UserVo;
+import com.cusob.ebooks.pojo.DTO.UserDto;
+import com.cusob.ebooks.result.Result;
+import com.cusob.ebooks.service.UserService;
 import io.swagger.annotations.ApiOperation;
-import org.simpleframework.xml.Path;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -27,11 +17,6 @@ import java.util.Map;
 @RequestMapping("/user")
 public class UserController {
 
-    @Autowired
-    private Minio minio;
-
-    @Autowired
-    private MinioService minioService;
 
     @Autowired
     private UserService userService;
