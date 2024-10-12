@@ -6,12 +6,11 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
-import java.sql.Time;
-import java.sql.Timestamp;
+import java.util.Date;
 
 
 @Data
-@TableName("user")
+@TableName("users")
 public class User extends BaseEntity  {
 
     public static final Integer USER = 0;
@@ -32,9 +31,9 @@ public class User extends BaseEntity  {
     private String password;
 
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private Data birthday;
+    private Date birthday;
 
-    @TableField("phone")
+    @TableField("phone_number")
     private String phone;
 
     @TableField("country")
@@ -43,13 +42,16 @@ public class User extends BaseEntity  {
     @TableField("email")
     private String email;
 
-    @TableField("company")
-    private String company;
+    @TableField("avatar")
+    private String avatar;
 
     @TableField("permission")
     private Integer permission;
 
     @TableField("is_available")
     private Integer isAvailable;
+
+    @TableField("nickname")
+    private String nickname;
 
 }

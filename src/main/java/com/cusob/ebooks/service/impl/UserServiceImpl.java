@@ -2,26 +2,36 @@ package com.cusob.ebooks.service.impl;
 
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.cusob.ebooks.auth.AuthContext;
 import com.cusob.ebooks.common.properties.JwtProperties;
+import com.cusob.ebooks.constant.MqConst;
+import com.cusob.ebooks.constant.RedisConst;
 import com.cusob.ebooks.mapper.UserMapper;
 import com.cusob.ebooks.pojo.DTO.ForgetPasswordDto;
 import com.cusob.ebooks.pojo.DTO.UpdatePasswordDto;
 import com.cusob.ebooks.pojo.DTO.UserDto;
 import com.cusob.ebooks.pojo.DTO.UserLoginDto;
+import com.cusob.ebooks.pojo.Email;
 import com.cusob.ebooks.pojo.User;
 import com.cusob.ebooks.pojo.vo.UserLoginVo;
 import com.cusob.ebooks.pojo.vo.UserVo;
 import com.cusob.ebooks.result.ResultCodeEnum;
+import com.cusob.ebooks.service.MailService;
 import com.cusob.ebooks.service.UserService;
 import com.cusob.ebooks.common.Exception.EbooksException;
-import jakarta.annotation.Resource;
+import com.cusob.ebooks.utils.JwtUtil;
+import com.cusob.ebooks.utils.ReadEmail;
+
+import javax.annotation.Resource;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.springframework.data.redis.core.HashOperations;
+
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
@@ -30,25 +40,24 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 
-import java.net.URLDecoder;
-import java.net.URLEncoder;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 @Service
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
 
-//    @Value("${cusob.cf-secret-key}")
-//    private String turnstileSecretKey ;
+    @Value("${ebooks.cf-secret-key}")
+    private String turnstileSecretKey ;
 
     @Autowired
     private JwtProperties jwtProperties;
 
-//    @Autowired
-//    private MailService mailService;
+    @Autowired
+    private MailService mailService;
 
     @Autowired
-    private RedisTemplate redisTemplate;
+    private RedisTemplate<String, Object> redisTemplate;
 
 //    @Autowired
 //    private CompanyService companyService;
@@ -62,7 +71,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Resource
     private RabbitTemplate rabbitTemplate;
 
-    private final RestTemplate restTemplate;
+    @Autowired
+    private RestTemplate restTemplate;
 
     public UserServiceImpl(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
@@ -75,37 +85,53 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Transactional
     @Override
     public void addUser(UserDto userDto) {
-        this.paramEmptyVerify(userDto);//参数校验：检查邮箱和手机是否为空
-        boolean flag = Pattern.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", userDto.getEmail());
-        if (!flag){
-            throw new EbooksException(ResultCodeEnum.EMAIL_FORMAT_ERROR);//邮箱格式错误
-        }
-        this.registerVerify(userDto);//检查是否通过cf验证及邮箱是否已经注册
+        Long userId = AuthContext.getUserId();
 
+
+
+        this.paramEmptyVerify(userDto); // 参数校验：检查邮箱和nickname是否为空
+
+        // 检查 email 是否已存在
+        QueryWrapper<User> emailQuery = new QueryWrapper<>();
+        emailQuery.eq("email", userDto.getEmail());
+        if (this.count(emailQuery) > 0) {
+            throw new EbooksException(ResultCodeEnum.EMAIL_IS_REGISTERED);
+        }
+
+        // 检查 nickname 是否已存在
+        QueryWrapper<User> nicknameQuery = new QueryWrapper<>();
+        nicknameQuery.eq("nickname", userDto.getNickname());
+        if (this.count(nicknameQuery) > 0) {
+            throw new EbooksException(ResultCodeEnum.NICKNAME_ALREADY_TAKEN);
+        }
+        // 检查邮箱
+        if (userDto.getEmail() != null && !userDto.getEmail().isEmpty()) {
+            boolean flag = Pattern.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", userDto.getEmail());
+            if (!flag) {
+                throw new EbooksException(ResultCodeEnum.EMAIL_FORMAT_ERROR); // 邮箱格式错误
+            }
+         //   this.registerVerify(userDto); // 检查是否通过cf验证及邮箱是否已经注册
+        }
+
+        // 创建用户对象并复制属性
         User user = new User();
         BeanUtils.copyProperties(userDto, user);
         String password = userDto.getPassword();
 
-        // Password encryption
+        // 密码加密
         user.setPassword(DigestUtils.md5DigestAsHex(password.getBytes()));
         user.setPermission(User.USER);
-        user.setIsAvailable(User.DISABLE);//默认不可用
+        user.setIsAvailable(User.DISABLE); // 默认不可用
         baseMapper.insert(user);
 
-        Company company = new Company();
-        company.setCompanyName(userDto.getCompany());
-        company.setAdminId(user.getId());
-        company.setPlanId(PlanPrice.FREE); // default free plan
-        companyService.saveCompany(company);
+        System.out.println("insert-success!");
 
-        user.setCompanyId(company.getId());
-        baseMapper.updateById(user);
-
-        HashOperations<String, String, String> hashOperations = redisTemplate.opsForHash();//将用户信息存入redis
-        String uuid = UUID.randomUUID().toString()+System.currentTimeMillis();//生成uuid
-        hashOperations.put(uuid,"email",user.getEmail());//将用户信息存入redis
-        hashOperations.put(uuid,"password",user.getPassword());
-        hashOperations.put(uuid,"phone",user.getPhone());
+        // 将用户信息存入 Redis
+        HashOperations<String, String, String> hashOperations = redisTemplate.opsForHash();
+        String uuid = UUID.randomUUID().toString() + System.currentTimeMillis(); // 生成 UUID
+        hashOperations.put(uuid, "email:nickname", user.getEmail() + ":" + user.getNickname()); // 将用户信息存入 Redis
+        hashOperations.put(uuid, "password", user.getPassword());
+        hashOperations.put(uuid, "phone", user.getPhone());
         redisTemplate.expire(uuid, 30, TimeUnit.MINUTES);
 
         Map<String,String> usermap = new HashMap<>();
@@ -114,6 +140,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         rabbitTemplate.convertAndSend(MqConst.EXCHANGE_REGISTER_DIRECT,
                 MqConst.ROUTING_REGISTER_SUCCESS, usermap); //发送注册邮件
     }
+
 
     private void registerVerify(UserDto userDto) {  //todo验证码
         String turnstileToken = userDto.getTurnstileToken();
@@ -143,43 +170,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (!StringUtils.hasText(userDto.getEmail())){
             throw new EbooksException(ResultCodeEnum.EMAIL_IS_EMPTY);
         }
-        if(!StringUtils.hasText(userDto.getPhone())){
-            throw new EbooksException(ResultCodeEnum.PHONE_IS_EMPTY);
+        if(!StringUtils.hasText(userDto.getNickname())){
+            throw new EbooksException(ResultCodeEnum.NICKNAME_IS_EMPTY);
         }
         //todo 链接激活
 
     }
 
-    /**
-     * Register For Invited
-     * @param userDto
-     */
-    @Override
-    public void registerForInvited(UserDto userDto, String encode) {
-        this.paramEmptyVerify(userDto);
-        this.registerVerify(userDto);
-        byte[] decode = Base64.getDecoder().decode(URLDecoder.decode(encode));
-        String emailInviter = new String(decode);
-        String key = RedisConst.INVITE_PREFIX + emailInviter;
-        Set<String> members = redisTemplate.opsForSet().members(key);
-        if (members==null){
-            throw new EbooksException(ResultCodeEnum.INVITE_LINK_INVALID);
-        }
-        if (!members.contains(userDto.getEmail())){
-            throw new EbooksException(ResultCodeEnum.EMAIL_NOT_INVITED);
-        }
-
-        User user = new User();
-        BeanUtils.copyProperties(userDto, user);
-        String password = userDto.getPassword();
-        // Password encryption
-        user.setPassword(DigestUtils.md5DigestAsHex(password.getBytes()));
-        User inviter = this.getUserByEmail(emailInviter);
-        user.setCompanyId(inviter.getCompanyId());
-        user.setPermission(User.USER);
-        user.setIsAvailable(User.DISABLE);  // todo default disable
-        baseMapper.insert(user);
-    }
 
     /**
      * add Admin
@@ -202,13 +199,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      */
     @Override
     public void removeAdmin(Long userId) {
-        Long id = AuthContext.getUserId();
-        User user = baseMapper.selectById(id);
-        Company company = companyService.getById(user.getCompanyId());
-        // Only Super Admin can remove admin
-        if (!company.getAdminId().equals(id)){
-            throw new EbooksException(ResultCodeEnum.NO_OPERATION_PERMISSIONS);
-        }
+
         User toRemove = baseMapper.selectById(userId);
         if (!toRemove.getPermission().equals(User.ADMIN)){
             throw new EbooksException(ResultCodeEnum.REMOVE_ADMIN_FAIL);
@@ -253,17 +244,16 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     /**
      * update UserInfo
-     * @param userVo
+     * @param userDto
      */
     @Override
-    public void updateUserInfo(UserVo userVo) {
-        UserDto userDto = new UserDto();
-        BeanUtils.copyProperties(userVo, userDto);
+    public void updateUserInfo(UserDto userDto) {
         this.paramEmptyVerify(userDto);
         User user = new User();
-        BeanUtils.copyProperties(userVo, user);
+        BeanUtils.copyProperties(userDto, user);
         baseMapper.updateById(user);
     }
+
 
     /**
      * get UserList
@@ -272,11 +262,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      */
     @Override
     public IPage<User> getUserList(Page<User> pageParam) {
-
+        // 创建 LambdaQueryWrapper
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
-        Long userId = AuthContext.getUserId();
-        User user = baseMapper.selectById(userId);
-        wrapper.eq(User::getCompanyId, user.getCompanyId());
+
+        // 按 User ID 排序（假设您希望按照 ID 升序排列）
+        wrapper.orderByAsc(User::getId);
+        // 执行分页查询
         IPage<User> page = baseMapper.selectPage(pageParam, wrapper);
         return page;
     }
@@ -289,42 +280,53 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public UserLoginVo login(UserLoginDto userLoginDto) {
         String email = userLoginDto.getEmail();
+        String nickname = userLoginDto.getNickname();
         String password = userLoginDto.getPassword();
         // select user from table email
-        User user = baseMapper.selectOne(
-                new LambdaQueryWrapper<User>()
-                        .eq(User::getEmail, email)
-        );
-        // Email is not registered
-        if (user==null){
-            throw new EbooksException(ResultCodeEnum.EMAIL_NOT_EXIST);
+        // 根据用户输入的字段进行不同的查询
+        User user;
+        if (email != null && !email.isEmpty()) {
+            // 使用邮箱进行查询
+            user = baseMapper.selectOne(
+                    new LambdaQueryWrapper<User>()
+                            .eq(User::getEmail, email)
+            );
+        } else if (nickname != null && !nickname.isEmpty()) {
+            // 使用昵称进行查询
+            user = baseMapper.selectOne(
+                    new LambdaQueryWrapper<User>()
+                            .eq(User::getNickname, nickname)
+            );
+        } else {
+            // 处理输入不合法的情况
+            throw new IllegalArgumentException("Either email or nickname must be provided.");
         }
+
+        // user is not registered
+        if (user == null){
+            throw new EbooksException(ResultCodeEnum.USER_NOT_REGISTER);
+        }
+
         // Password is wrong
         String psd = DigestUtils.md5DigestAsHex(password.getBytes());
         if (!psd.equals(user.getPassword())){
             throw new EbooksException(ResultCodeEnum.PASSWORD_WRONG);
         }
+
         // todo User is Disable(During the internal test, you cannot log in temporarily)
         if (user.getIsAvailable().equals(User.DISABLE)){
-            HashOperations<String, String, String> hashOperations = redisTemplate.opsForHash();
-            String uuid = UUID.randomUUID().toString()+System.currentTimeMillis();
-            hashOperations.put(uuid,"email",user.getEmail());
+            HashOperations<String, String, String> hashOperations = redisTemplate.opsForHash();//将用户信息存入redis
+            String uuid = UUID.randomUUID().toString()+System.currentTimeMillis();//生成uuid
+            hashOperations.put(uuid,"email:nickname",user.getEmail() + ":" +user.getNickname());//将用户信息存入redis
             hashOperations.put(uuid,"password",user.getPassword());
             hashOperations.put(uuid,"phone",user.getPhone());
             redisTemplate.expire(uuid, 30, TimeUnit.MINUTES);
 
-            Map<String,String> usermap = new HashMap<>();
-            usermap.put("uuid",uuid);
-            usermap.put("email",user.getEmail());
-            rabbitTemplate.convertAndSend(MqConst.EXCHANGE_REGISTER_DIRECT,
-                    MqConst.ROUTING_REGISTER_SUCCESS, usermap); //发送注册邮件
-            throw new EbooksException(ResultCodeEnum.USER_IS_DISABLE);
         }
 
         // Generate token
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", user.getId());
-        claims.put("companyId", user.getCompanyId());
         String token = JwtUtil.createJWT(jwtProperties.getSecretKey(), jwtProperties.getTtl(), claims);
 
         UserLoginVo userLoginVo = UserLoginVo.builder()
@@ -400,7 +402,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
         // 生成链接
         String link = baseUrl+"/resetPassword?email=" +emailKey;
-        String subject = "Password Reset Instructions for Your Email Marketing Platform Account";
+        String subject = "Password Reset Instructions for Ebooks Platform Account";
         String content = ReadEmail.readwithcode("emails/reset.html", link);
         content = content.replace("{EMAIL_PLACEHOLDER}", email);
 
@@ -438,7 +440,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public void sendEmailForRegisterSuccess(String uuid,String email) {
 
-        String subject = "Welcome to Our Email Marketing Platform! New User Guide";
+        String subject = "Welcome to Our Ebooks Platform! New User Guide";
         // todo 待优化
         String content = ReadEmail.readwithcode("emails/activate.html",baseUrl+"/registerSuccess?uuid="+uuid);
         mailService.sendHtmlMailMessage(email, subject, content);
@@ -525,85 +527,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         baseMapper.updateById(user);
     }
 
-
-    /**
-     * Invite colleagues to join
-     * @param email
-     */
     @Override
     public void invite(String email) {
-        Company company = companyService.getById(AuthContext.getCompanyId());
-        // Free user
-        if (company.getPlanId().equals(PlanPrice.FREE)){
-            throw new EbooksException(ResultCodeEnum.NO_PERMISSION);
-        }
 
-        Integer count = this.getUserCount();
-        PlanPrice plan = planPriceService.getPlanById(company.getPlanId());
-        String planName = plan.getName();
-
-        Long userId = AuthContext.getUserId();
-        User inviter = baseMapper.selectById(userId);
-        String key = RedisConst.INVITE_PREFIX + inviter.getEmail();
-
-        int num = 0;
-        Long size = redisTemplate.opsForSet().size(key);
-        if (size!=null){
-            num += size.intValue();
-        }
-        // Essentials user
-        if (planName.equals(PlanPrice.ESSENTIALS)){
-            if (count + num >=PlanPrice.ESSENTIALS_USER_LIMIT){
-                throw new EbooksException(ResultCodeEnum.USER_NUMBER_FULL);
-            }
-        }
-        // Standard user
-        if (planName.equals(PlanPrice.STANDARD)){
-            if (count + num >=PlanPrice.STANDARD_USER_LIMIT){
-                throw new EbooksException(ResultCodeEnum.USER_NUMBER_FULL);
-            }
-        }
-
-        if (!StringUtils.hasText(email)){
-            throw new EbooksException(ResultCodeEnum.EMAIL_IS_EMPTY);
-        }
-        User user = this.getUserByEmail(email);
-        if (user!=null){
-            throw new EbooksException(ResultCodeEnum.EMAIL_IS_REGISTERED);
-        }
-
-        String subject = inviter.getFirstName() + " " + inviter.getLastName() + " is inviting you to join the " +
-                inviter.getCompany(); // todo 待优化
-        String encode = Base64.getEncoder().encodeToString(inviter.getEmail().getBytes());
-        String content = "Hi,\n" +
-                subject +
-                inviter.getCompany() + ".\n" +
-                "Click the link below to join: \n" +
-                baseUrl + "/signupByInvite?verifyCode=" + URLEncoder.encode(encode)
-                ;
-        redisTemplate.opsForSet().add(key, email);
-        redisTemplate.expire(key, RedisConst.INVITE_TIMEOUT, TimeUnit.MINUTES);
-
-        Email mail = new Email();
-        mail.setEmail(email);
-        mail.setSubject(subject);
-        mail.setContent(content);
-        rabbitTemplate.convertAndSend(MqConst.EXCHANGE_INVITE_DIRECT,
-                MqConst.EXCHANGE_INVITE_DIRECT,
-                mail
-        );
     }
 
-    /**
-     * get User Count
-     */
-    private Integer getUserCount() {
-        Long companyId = AuthContext.getCompanyId();
-        Integer count = baseMapper.selectCount(
-                new LambdaQueryWrapper<User>()
-                        .eq(User::getCompanyId, companyId)
-        );
-        return count;
+    @Override
+    public void registerForInvited(UserDto userDto, String encode) {
+
     }
 
 

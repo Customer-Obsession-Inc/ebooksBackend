@@ -1,6 +1,6 @@
 package com.cusob.ebooks.service;
 
-
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cusob.ebooks.pojo.DTO.ForgetPasswordDto;
 import com.cusob.ebooks.pojo.DTO.UpdatePasswordDto;
 import com.cusob.ebooks.pojo.DTO.UserDto;
@@ -8,7 +8,6 @@ import com.cusob.ebooks.pojo.DTO.UserLoginDto;
 import com.cusob.ebooks.pojo.User;
 import com.cusob.ebooks.pojo.vo.UserLoginVo;
 import com.cusob.ebooks.pojo.vo.UserVo;
-import org.springframework.data.domain.Page;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 
@@ -28,9 +27,9 @@ public interface UserService extends IService<User> {
 
     /**
      * update UserInfo
-     * @param userVo
+     * @param userDto
      */
-    void updateUserInfo(UserVo userVo);
+    void updateUserInfo(UserDto userDto);
 
 
     /**
@@ -38,6 +37,7 @@ public interface UserService extends IService<User> {
      * @param pageParam
      * @return
      */
+
     IPage<User> getUserList(Page<User> pageParam);
 
     /**

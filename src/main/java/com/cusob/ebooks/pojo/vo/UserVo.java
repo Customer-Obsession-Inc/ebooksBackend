@@ -22,4 +22,6 @@ public class UserVo implements Serializable {
     private String country;
 
     private Integer permission;
+
+    private String nickname;
 }

@@ -11,6 +11,8 @@ public class UserLoginDto implements Serializable {
 
     private String email;
 
+    private String nickname;
+
     private String password;
 
 }

@@ -33,7 +33,7 @@ public enum ResultCodeEnum {
 
     EMAIL_IS_REGISTERED(222, "The email is already registered"),
     EMAIL_IS_EMPTY(223, "The email is empty"),
-    PHONE_IS_EMPTY(224, "The phone number is empty"),
+//    PHONE_IS_EMPTY(224, "The phone number is empty"),
     PASSWORD_IS_EMPTY(225, "The password is empty"),
     LAST_NAME_IS_EMPTY(226, "The last name is empty"),
     FIRST_NAME_IS_EMPTY(227, "The first name is empty"),
@@ -99,8 +99,13 @@ public enum ResultCodeEnum {
     EMAIL_IS_ERROR(20101,"EMAIL_IS_ERROR"),
     REDRICT_SUCCESS(301, "REDRICT"),
 
+    USER_NOT_REGISTER(8888, "USER_NOT_REGISTER"),
 
-    ;
+
+    NICKNAME_ALREADY_TAKEN(303, "NICKNAME_ALREADY_TAKEN"),
+    INVALID_INPUT(304,"INVALID_INPUT"),
+    NICKNAME_IS_EMPTY(305, "NICKNAME_IS_EMPTY");
+
 
     private Integer code;
 

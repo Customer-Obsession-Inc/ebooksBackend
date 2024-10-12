@@ -16,6 +16,8 @@ public class UserDto implements Serializable {
 
     private String password;
 
+    private String nickname;
+
     private String email;
 
     private String turnstileToken;
@@ -25,4 +27,5 @@ public class UserDto implements Serializable {
     private String country;
 
     private String company;
+
 }
