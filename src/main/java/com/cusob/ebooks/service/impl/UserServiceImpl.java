@@ -455,7 +455,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             String[] emailAndNickNamearray = entries.get("email:nickname").split(":");
 
             String email = emailAndNickNamearray[0];
-            String nickName = emailAndNickNamearray[1];
 
 
             User user = baseMapper.selectOne(
