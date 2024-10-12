@@ -85,9 +85,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Transactional
     @Override
     public void addUser(UserDto userDto) {
-        Long userId = AuthContext.getUserId();
-
-
 
         this.paramEmptyVerify(userDto); // 参数校验：检查邮箱和nickname是否为空
 
@@ -455,7 +452,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         Map<String, String> entries = hashOperations.entries(uuid);
         if(!entries.isEmpty()){
 
-            String email = entries.get("email");
+            String[] emailAndNickNamearray = entries.get("email:nickname").split(":");
+
+            String email = emailAndNickNamearray[0];
+            String nickName = emailAndNickNamearray[1];
+
 
             User user = baseMapper.selectOne(
                     new LambdaQueryWrapper<User>()

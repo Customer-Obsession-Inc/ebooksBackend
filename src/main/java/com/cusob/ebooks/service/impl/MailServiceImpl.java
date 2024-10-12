@@ -83,29 +83,29 @@ public class MailServiceImpl implements MailService {
      * @param subject
      * @param text
      */
-//    @Override
-//    public void sendTextMailMessage(String to,String subject,String text){
-//        this.checkMail(to, subject, text);
-//        try {
-//            MimeMessage mimeMessage = javaMailSender.createMimeMessage();
-//            MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(mimeMessage, true);
-//
-//            //邮件发信人
-//            mimeMessageHelper.setFrom(mailSender);
-//            //邮件收信人  1或多个
-//            mimeMessageHelper.setTo(to.split(","));
-//            //邮件主题
-//            mimeMessageHelper.setSubject(subject);
-//            //邮件内容
-//            mimeMessageHelper.setText(text, true);
-//            //邮件发送时间
-//            mimeMessageHelper.setSentDate(new Date());
-//            //发送邮件
-//            javaMailSender.send(mimeMessageHelper.getMimeMessage());
-//        } catch (Exception e) {
-//            throw new EbooksException(ResultCodeEnum.EMAIL_SEND_FAIL);
-//        }
-//    }
+    @Override
+    public void sendTextMailMessage(String to,String subject,String text){
+        this.checkMail(to, subject, text);
+        try {
+            MimeMessage mimeMessage = javaMailSender.createMimeMessage();
+            MimeMessageHelper mimeMessageHelper = new MimeMessageHelper(mimeMessage, true);
+
+            //邮件发信人
+            mimeMessageHelper.setFrom(mailSender);
+            //邮件收信人  1或多个
+            mimeMessageHelper.setTo(to.split(","));
+            //邮件主题
+            mimeMessageHelper.setSubject(subject);
+            //邮件内容
+            mimeMessageHelper.setText(text, true);
+            //邮件发送时间
+            mimeMessageHelper.setSentDate(new Date());
+            //发送邮件
+            javaMailSender.send(mimeMessageHelper.getMimeMessage());
+        } catch (Exception e) {
+            throw new EbooksException(ResultCodeEnum.EMAIL_SEND_FAIL);
+        }
+    }
 
     /**
      * 发送Html邮件

@@ -100,23 +100,23 @@ public class MailReceiver {
         }
     }
 
-    @RabbitListener(bindings = @QueueBinding(
-            value = @Queue(value = MqConst.QUEUE_BOOK_DEMO, durable = "true"),
-            exchange = @Exchange(value = MqConst.EXCHANGE_BOOK_DIRECT),
-            key = {MqConst.ROUTING_BOOK_DEMO}
-    ))
-    public void bookDemo(Book book, Message message, Channel channel) throws IOException {
-        try {
-            if (book != null) {
-                bookService.emailNotify(book);
-            }
-        }catch (Exception e){
-            System.out.println(e.getMessage());
-        }finally {
-            channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
-        }
-
-    }
+//    @RabbitListener(bindings = @QueueBinding(
+//            value = @Queue(value = MqConst.QUEUE_BOOK_DEMO, durable = "true"),
+//            exchange = @Exchange(value = MqConst.EXCHANGE_BOOK_DIRECT),
+//            key = {MqConst.ROUTING_BOOK_DEMO}
+//    ))
+//    public void bookDemo(Book book, Message message, Channel channel) throws IOException {
+//        try {
+//            if (book != null) {
+//                bookService.emailNotify(book);
+//            }
+//        }catch (Exception e){
+//            System.out.println(e.getMessage());
+//        }finally {
+//            channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+//        }
+//
+//    }
 
     @RabbitListener(bindings = @QueueBinding(
             value = @Queue(value = MqConst.QUEUE_BIND_SENDER, durable = "true"),
