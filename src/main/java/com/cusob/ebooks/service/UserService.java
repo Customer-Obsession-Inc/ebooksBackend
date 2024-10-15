@@ -42,7 +42,9 @@ public interface UserService extends IService<User> {
 
     /**
      * user login
+     *
      * @param userLoginDto
+     * @param token
      * @return
      */
     UserLoginVo login(UserLoginDto userLoginDto);
@@ -120,5 +122,7 @@ public interface UserService extends IService<User> {
      * @param email
      */
     void sendEmailForResetPassword(String email);
+
+    UserLoginVo islogin(String token);
 }
 

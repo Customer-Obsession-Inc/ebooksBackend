@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.servlet.http.HttpServletRequest;
 import java.util.Map;
 
 
@@ -104,9 +105,34 @@ public class UserController {
     @PostMapping("login")
     @ApiOperation(value = "user login")
     public Result login(@RequestBody UserLoginDto userLoginDto) {
+
         UserLoginVo userLoginVo = userService.login(userLoginDto);
         return Result.ok(userLoginVo);
     }
+
+    /**
+     * user islogin
+     * @param
+     * @return
+     */
+    @GetMapping("islogin")
+    @ApiOperation(value = "user islogin")
+    public Result islogin(HttpServletRequest request) {
+        String token = request.getHeader("token");
+        if (token == null || token.isEmpty()) {
+            return Result.ok("Token is missing");
+        }
+
+        UserLoginVo islogin = userService.islogin(token);
+        if (islogin == null) {
+            return Result.ok("Invalid token");
+        }
+
+        return Result.ok(islogin);
+    }
+
+
+
 
 //    @ApiOperation("upload Avatar")
 //    @PostMapping("uploadAvatar")

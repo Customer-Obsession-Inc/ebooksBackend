@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cusob.ebooks.auth.AuthContext;
+import com.cusob.ebooks.auth.UserLoginInterceptor;
 import com.cusob.ebooks.common.properties.JwtProperties;
 import com.cusob.ebooks.constant.MqConst;
 import com.cusob.ebooks.constant.RedisConst;
@@ -269,13 +270,40 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         return page;
     }
 
+    @Override
+    public UserLoginVo islogin(String token) {
+        Object value = redisTemplate.opsForValue().get(token);
+        Long userId;
+
+        if (value instanceof Integer) {
+            userId = ((Integer) value).longValue(); // 将 Integer 转换为 Long
+        } else if (value instanceof Long) {
+            userId = (Long) value; // 直接使用 Long
+        } else {
+            throw new EbooksException(ResultCodeEnum.LOGIN_OUT_TIME); // 处理其他类型或 null 的情况
+        }
+
+        User user = baseMapper.selectById(userId);
+        UserLoginVo userLoginVo = UserLoginVo.builder()
+                .id(user.getId())
+                .lastName(user.getLastName())
+                .firstName(user.getFirstName())
+                .avatar(user.getAvatar())
+                .nickName(user.getNickname())
+                .token(token)
+                .build();
+        return userLoginVo;
+    }
+
     /**
      * user login
+     *
      * @param userLoginDto
      * @return
      */
     @Override
     public UserLoginVo login(UserLoginDto userLoginDto) {
+
         String email = userLoginDto.getEmail();
         String nickname = userLoginDto.getNickname();
         String password = userLoginDto.getPassword();
@@ -324,8 +352,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         // Generate token
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", user.getId());
+        claims.put("email",user.getEmail());
         String token = JwtUtil.createJWT(jwtProperties.getSecretKey(), jwtProperties.getTtl(), claims);
-
+        redisTemplate.opsForValue().set(token, user.getId());
+        redisTemplate.expire(token, 5, TimeUnit.MINUTES );
+        System.out.println(token);
         UserLoginVo userLoginVo = UserLoginVo.builder()
                 .id(user.getId())
                 .lastName(user.getLastName())
