@@ -1,0 +1,18 @@
+server:
+    port: 8080
+
+spring:
+    profiles:
+        active: dev
+    main:
+        allow-circular-references: true
+    mvc:
+        pathmatch:
+            matching-strategy: ant_path_matcher
+minio:
+    url: http://172.16.11.22:9090
+    username: minio
+    password: minio123
+    bucketName: ebooks
+    bucketDkim: dkim
+

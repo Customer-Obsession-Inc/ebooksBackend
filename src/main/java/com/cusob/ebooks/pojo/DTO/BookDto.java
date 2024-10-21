@@ -14,9 +14,9 @@ import java.io.Serializable;
         private String price;
         private String author;
 
-        private String content_path;
+        private String resourceurl;
 
-        private String book_face;
+        private String coverurl;
 
         private Integer type;
 

@@ -12,6 +12,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.InputStream;
 import java.util.List;
 
 @Controller
@@ -29,9 +30,9 @@ public class BookController {
 
     @ApiOperation("seaching")
     @GetMapping("search")
-    public List<BookDetailVo> search(@RequestBody BookDto bookdto){
-        String bookName = bookdto.getName();
-        List<BookDetailVo> bookDetailVos = bookService.searchBook(bookName);
+    public List<BookDetailVo> search(@RequestParam String name) {
+
+        List<BookDetailVo> bookDetailVos = bookService.searchBook(name);
 
         return bookDetailVos;
     }

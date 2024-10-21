@@ -2,22 +2,24 @@ package com.cusob.ebooks.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.cusob.ebooks.pojo.DTO.ForgetPasswordDto;
-import com.cusob.ebooks.pojo.DTO.UpdatePasswordDto;
-import com.cusob.ebooks.pojo.DTO.UserDto;
-import com.cusob.ebooks.pojo.DTO.UserLoginDto;
+import com.cusob.ebooks.pojo.DTO.*;
+import com.cusob.ebooks.pojo.Minio;
 import com.cusob.ebooks.pojo.User;
 import com.cusob.ebooks.pojo.vo.UserLoginVo;
 import com.cusob.ebooks.pojo.vo.UserVo;
 import com.cusob.ebooks.result.Result;
+import com.cusob.ebooks.service.MinioService;
 import com.cusob.ebooks.service.UserService;
 import io.swagger.annotations.ApiOperation;
 
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
+import java.io.File;
+import java.io.IOException;
 import java.util.Map;
 
 
@@ -28,6 +30,12 @@ public class UserController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private MinioService minioService;
+
+    @Autowired
+    private Minio minio;
 
     //    @ApiOperation("add User(User Register)")
 //    @GetMapping("get")
@@ -76,7 +84,10 @@ public class UserController {
 
     @ApiOperation("update UserInfo")
     @PutMapping("update")
-    public Result updateUserInfo(@RequestBody UserDto userDto){
+    public Result updateUserInfo(@RequestBody UserUpdateDto userUpdateDto
+                                 ) throws IOException {
+        UserDto userDto = new UserDto();
+        BeanUtils.copyProperties(userUpdateDto, userDto);
         userService.updateUserInfo(userDto);
         return Result.ok();
     }
@@ -134,12 +145,12 @@ public class UserController {
 
 
 
-//    @ApiOperation("upload Avatar")
-//    @PostMapping("uploadAvatar")
-//    public Result uploadAvatar(@RequestPart("file") MultipartFile file){
-//        String url = minioService.uploadAvatar(minio.getBucketName(), file);
-//        return Result.ok(url);
-//    }
+    @ApiOperation("upload Avatar")
+    @PostMapping("uploadAvatar")
+    public Result uploadAvatar(@RequestPart("file") MultipartFile file){
+        String url = minioService.uploadAvatar(minio.getBucketName(), file);
+        return Result.ok(url);
+    }
 
     @ApiOperation("send verify code for updating password")
     @PostMapping("sendCodeForPassword")

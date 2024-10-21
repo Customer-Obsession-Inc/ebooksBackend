@@ -1,10 +1,11 @@
 package com.cusob.ebooks.service;
 
-import org.jetbrains.annotations.TestOnly;
-import org.junit.Test;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.servlet.http.HttpServletResponse;
+import java.io.File;
 import java.io.InputStream;
+import java.net.URL;
 import java.util.List;
 
 public interface MinioService {
@@ -16,6 +17,10 @@ public interface MinioService {
      * @return
      */
     String uploadFile(String bucketName, MultipartFile file);
+
+    URL getPresignedUrl(String bucketName, String objectName, int expiryInSeconds);
+
+    InputStream readObject(String bucketName, String objectName) throws Exception;
 
     /**
      * batch Remove files
@@ -35,6 +40,15 @@ public interface MinioService {
      * upload Dkim secret key
      */
     String uploadDkim(String bucketName, String filePath, InputStream inputStream);
+
+    /**
+     * 下载文件
+     *
+     * @param fileUrl 文件名
+     * @param response HttpServletResponse
+     */
+
+    void downloadFile(String fileUrl, HttpServletResponse response);
 
 
 

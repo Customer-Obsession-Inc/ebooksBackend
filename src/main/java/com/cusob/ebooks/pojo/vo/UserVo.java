@@ -17,11 +17,13 @@ public class UserVo implements Serializable {
 
     private String email;
 
-    private String phone;
+    private String phoneNumber;
 
     private String country;
 
     private Integer permission;
 
     private String nickname;
+
+    private String avatar;
 }

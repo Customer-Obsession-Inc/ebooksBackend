@@ -9,10 +9,14 @@ spring:
     mvc:
         pathmatch:
             matching-strategy: ant_path_matcher
-    minio:
-        url: http://172.16.11.22:9090
-        username: minio
-        password: minio123
-        bucketName: ebooks
-        bucketDkim: dkim
+    servlet:
+        multipart:
+            enabled: true
+            max-file-size: 10MB
+            max-request-size: 10MB
+minio:
+    url: http://127.0.0.1:9000
+    username: minioadmin
+    password: minioadmin
+    bucketName: avatars
 

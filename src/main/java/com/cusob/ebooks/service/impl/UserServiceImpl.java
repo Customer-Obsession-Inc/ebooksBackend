@@ -21,6 +21,7 @@ import com.cusob.ebooks.pojo.vo.UserLoginVo;
 import com.cusob.ebooks.pojo.vo.UserVo;
 import com.cusob.ebooks.result.ResultCodeEnum;
 import com.cusob.ebooks.service.MailService;
+import com.cusob.ebooks.service.MinioService;
 import com.cusob.ebooks.service.UserService;
 import com.cusob.ebooks.common.Exception.EbooksException;
 import com.cusob.ebooks.utils.JwtUtil;
@@ -40,7 +41,9 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
@@ -56,6 +59,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Autowired
     private MailService mailService;
+
+    @Autowired
+    private MinioService minioService;
 
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
@@ -129,7 +135,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         String uuid = UUID.randomUUID().toString() + System.currentTimeMillis(); // 生成 UUID
         hashOperations.put(uuid, "email:nickname", user.getEmail() + ":" + user.getNickname()); // 将用户信息存入 Redis
         hashOperations.put(uuid, "password", user.getPassword());
-        hashOperations.put(uuid, "phone", user.getPhone());
+        hashOperations.put(uuid, "phone", user.getPhoneNumber());
         redisTemplate.expire(uuid, 30, TimeUnit.MINUTES);
 
         Map<String,String> usermap = new HashMap<>();
@@ -247,9 +253,17 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public void updateUserInfo(UserDto userDto) {
         this.paramEmptyVerify(userDto);
+//        MultipartFile avatar = userDto.getAvatar();
+
         User user = new User();
+//        String avatarUrl = minioService.uploadAvatar("avatars", avatar);
         BeanUtils.copyProperties(userDto, user);
+//        user.setAvatar(avatarUrl);
+        user.setId(AuthContext.getUserId());
         baseMapper.updateById(user);
+
+        User user1 = baseMapper.selectById(AuthContext.getUserId());
+        System.out.println("good");
     }
 
 
@@ -344,7 +358,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             String uuid = UUID.randomUUID().toString()+System.currentTimeMillis();//生成uuid
             hashOperations.put(uuid,"email:nickname",user.getEmail() + ":" +user.getNickname());//将用户信息存入redis
             hashOperations.put(uuid,"password",user.getPassword());
-            hashOperations.put(uuid,"phone",user.getPhone());
+            hashOperations.put(uuid,"phone",user.getPhoneNumber());
             redisTemplate.expire(uuid, 30, TimeUnit.MINUTES);
 
         }
@@ -355,7 +369,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         claims.put("email",user.getEmail());
         String token = JwtUtil.createJWT(jwtProperties.getSecretKey(), jwtProperties.getTtl(), claims);
         redisTemplate.opsForValue().set(token, user.getId());
-        redisTemplate.expire(token, 5, TimeUnit.MINUTES );
+        redisTemplate.expire(token, 30, TimeUnit.MINUTES );
         System.out.println(token);
         UserLoginVo userLoginVo = UserLoginVo.builder()
                 .id(user.getId())

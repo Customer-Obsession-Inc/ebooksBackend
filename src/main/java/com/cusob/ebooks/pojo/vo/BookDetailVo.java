@@ -11,6 +11,9 @@ public class BookDetailVo implements Serializable {
     private String name;
     private String author;
     private Integer price;
+    private String resourceurl;
+
+    private String coverurl;
 
     private String description;
 }

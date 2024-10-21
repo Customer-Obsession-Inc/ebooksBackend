@@ -34,7 +34,7 @@ public class User extends BaseEntity  {
     private Date birthday;
 
     @TableField("phone_number")
-    private String phone;
+    private String phoneNumber;
 
     @TableField("country")
     private String country;

@@ -23,11 +23,11 @@ public class Book extends BaseEntity {
     @TableField("author")
     private String author;
 
-    @TableField("content_path")
-    private String content_path;
+    @TableField("coverurl")
+    private String coverurl;
 
-    @TableField("book_face")
-    private String book_face;
+    @TableField("resourceurl")
+    private String resourceurl;
 
     @TableField("type")
     @ApiModelProperty(value = "逻辑type(1:document，0:book)")
