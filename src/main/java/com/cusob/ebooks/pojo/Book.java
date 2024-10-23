@@ -7,6 +7,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
+import org.w3c.dom.Text;
 
 import java.util.Date;
 
@@ -17,11 +18,11 @@ public class Book extends BaseEntity {
     private String name;
 
     @TableField("price")
-    private Integer lastName;
+    private Integer price;
 
 
-    @TableField("author")
-    private String author;
+    @TableField("updater")
+    private String updater;
 
     @TableField("coverurl")
     private String coverurl;
@@ -32,5 +33,8 @@ public class Book extends BaseEntity {
     @TableField("type")
     @ApiModelProperty(value = "逻辑type(1:document，0:book)")
     private Integer type;
+
+    @TableField("description")
+    private String description;
 
 }

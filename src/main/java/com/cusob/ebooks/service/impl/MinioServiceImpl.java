@@ -4,21 +4,30 @@ package com.cusob.ebooks.service.impl;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.cusob.ebooks.auth.AuthContext;
+import com.cusob.ebooks.pojo.Book;
 import com.cusob.ebooks.pojo.Minio;
 import com.cusob.ebooks.pojo.User;
 import com.cusob.ebooks.service.MinioService;
 import io.minio.*;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.rendering.PDFRenderer;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.imageio.ImageIO;
 import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletResponse;
-import java.io.File;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -34,16 +43,22 @@ public class MinioServiceImpl implements MinioService {
     private MinioClient minioClient;
 
     @Autowired
-    private BaseMapper baseMapper;
+    private BaseMapper<Book> baseMapper;
+
+    @Autowired
+    private BaseMapper<User> baseUserMapper;
+
 
     /**
      * upload File
+     *
      * @param bucketName
      * @param file
+     * @param bookid
      * @return
      */
     @Override
-    public String uploadFile(String bucketName, MultipartFile file) {
+    public boolean uploadFile(String bucketName, MultipartFile file, Long bookid) {
         try {
             // 判断桶是否存在
             boolean bucketExists = minioClient.bucketExists(BucketExistsArgs.builder().bucket(bucketName).build());
@@ -62,14 +77,84 @@ public class MinioServiceImpl implements MinioService {
                     object(filename).
                     stream(file.getInputStream(), file.getSize(), -1).
                     contentType(file.getContentType()).build()); // 文件上传的类型，如果不指定，那么每次访问时都要先下载文件
-            String url= minio.getUrl()+"/"+minio.getBucketName()+"/"+filename;
-            return url;
+            InputStream inputStream = file.getInputStream();
+
+            try (PDDocument document = PDDocument.load(inputStream)) {
+                PDFRenderer pdfRenderer = new PDFRenderer(document);
+                // 提取第一页
+                BufferedImage bufferedImage = pdfRenderer.renderImageWithDPI(0, 300); // 300 DPI
+
+
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                ImageIO.write(bufferedImage, "pdf", baos); // 选择格式，例如 png
+                byte[] imageBytes = baos.toByteArray();
+
+                // 创建 MultipartFile
+                MultipartFile multipartFile = new MockMultipartFile("file", "firstPage" + bookid+ ".png", "image/png", imageBytes);
+                this.uploadCover("cover", multipartFile, bookid);
+            }
+
+
+            String resourceurl= minio.getUrl()+"/"+"books"+"/"+filename;
+            Book book = new Book();
+            book.setId(bookid);
+            book.setResourceurl(resourceurl);
+            baseMapper.updateById(book);
+            return true;
         } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException("文件上传失败");
         }
 
     }
+
+
+
+    @Override
+    public void uploadCover(String bucketName, MultipartFile file, Long bookid) {
+        try {
+            // 判断桶是否存在
+            boolean bucketExists = minioClient.bucketExists(BucketExistsArgs.builder().bucket(bucketName).build());
+            if (!bucketExists){
+                // 如果不存在，就创建桶
+                minioClient.makeBucket(MakeBucketArgs.builder().bucket(bucketName).build());
+            }
+            // 本地时间，具体到年、月、日
+            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+            // String uuid= UUID.randomUUID().toString(); todo 文件名覆盖
+            Long userId = AuthContext.getUserId();
+            String filename = userId.toString() + "/" + timestamp + "/" + file.getOriginalFilename();
+            // 加一个/表示创建一个文件夹
+            minioClient.putObject(PutObjectArgs.builder().
+                    bucket(bucketName).
+                    object(filename).
+                    stream(file.getInputStream(), file.getSize(), -1).
+                    contentType(file.getContentType()).build()); // 文件上传的类型，如果不指定，那么每次访问时都要先下载文件
+
+            minioClient.putObject(PutObjectArgs.builder().
+                    bucket("cover").
+                    object(filename).
+                    stream(file.getInputStream(), file.getSize(), -1).
+                    contentType(file.getContentType()).build());
+
+            String coverurl= minio.getUrl()+"/"+"cover"+"/"+filename;
+            Book book = new Book();
+            book.setId(bookid);
+            book.setCoverurl(coverurl);
+            baseMapper.updateById(book);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("文件上传失败");
+        }
+    }
+
+
+
+
+
+
+
 
     @Override
     public URL getPresignedUrl(String bucketName, String objectName, int expiryInSeconds) {
@@ -138,7 +223,7 @@ public class MinioServiceImpl implements MinioService {
             UpdateWrapper<User> updateWrapper = new UpdateWrapper<>();
             updateWrapper.eq("id", userId); // 指定要更新的用户 ID
             updateWrapper.set("avatar", url); // 设置要更新的字段及其值
-            baseMapper.update(null, updateWrapper);
+            baseUserMapper.update(null, updateWrapper);
             return url;
         } catch (Exception e) {
             e.printStackTrace();
@@ -222,6 +307,9 @@ public class MinioServiceImpl implements MinioService {
             }
         }
     }
+
+
+
 
     /**
      * 从 URL 中提取对象名称

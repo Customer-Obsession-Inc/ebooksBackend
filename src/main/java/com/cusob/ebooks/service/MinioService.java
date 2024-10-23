@@ -3,7 +3,6 @@ package com.cusob.ebooks.service;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletResponse;
-import java.io.File;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.List;
@@ -12,11 +11,13 @@ public interface MinioService {
 
     /**
      * upload File
+     *
      * @param bucketName
-     * @param file
+     * @param fil
+     * @param bookid
      * @return
      */
-    String uploadFile(String bucketName, MultipartFile file);
+    boolean uploadFile(String bucketName, MultipartFile fil, Long bookid);
 
     URL getPresignedUrl(String bucketName, String objectName, int expiryInSeconds);
 
@@ -50,6 +51,6 @@ public interface MinioService {
 
     void downloadFile(String fileUrl, HttpServletResponse response);
 
-
+    void uploadCover(String bucketName, MultipartFile file, Long bookid);
 
 }

@@ -2,6 +2,7 @@ package com.cusob.ebooks.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.cusob.ebooks.annotations.RequireLogin;
 import com.cusob.ebooks.pojo.DTO.*;
 import com.cusob.ebooks.pojo.Minio;
 import com.cusob.ebooks.pojo.User;
@@ -18,11 +19,10 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
-import java.io.File;
 import java.io.IOException;
 import java.util.Map;
 
-
+@RequireLogin
 @RestController
 @RequestMapping("/user")
 public class UserController {

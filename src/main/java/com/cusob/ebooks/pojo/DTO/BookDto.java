@@ -1,6 +1,7 @@
 package com.cusob.ebooks.pojo.DTO;
 
 import lombok.Data;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.Serializable;
 
@@ -11,14 +12,21 @@ import java.io.Serializable;
 
         private String name;
 
-        private String price;
-        private String author;
+        private Integer price;
+
+        private String updater;
 
         private String resourceurl;
+
+        private MultipartFile file;
 
         private String coverurl;
 
         private Integer type;
+
+        private String description;
+
+        private String[] category;
 
 
     }

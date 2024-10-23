@@ -287,14 +287,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     public UserLoginVo islogin(String token) {
         Object value = redisTemplate.opsForValue().get(token);
-        Long userId;
+            Long userId;
 
-        if (value instanceof Integer) {
-            userId = ((Integer) value).longValue(); // 将 Integer 转换为 Long
-        } else if (value instanceof Long) {
-            userId = (Long) value; // 直接使用 Long
-        } else {
-            throw new EbooksException(ResultCodeEnum.LOGIN_OUT_TIME); // 处理其他类型或 null 的情况
+            if (value instanceof Integer) {
+                userId = ((Integer) value).longValue(); // 将 Integer 转换为 Long
+            } else if (value instanceof Long) {
+                userId = (Long) value; // 直接使用 Long
+            } else {
+                throw new EbooksException(ResultCodeEnum.LOGIN_OUT_TIME); // 处理其他类型或 null 的情况
         }
 
         User user = baseMapper.selectById(userId);

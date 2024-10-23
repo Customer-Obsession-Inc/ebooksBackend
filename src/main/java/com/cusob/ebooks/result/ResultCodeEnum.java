@@ -109,7 +109,9 @@ public enum ResultCodeEnum {
 
 
     //图书异常
-    BOOK_NOT_FOUND(307 , "BOOK_NOT_FOUND");
+    BOOK_NOT_FOUND(307 , "BOOK_NOT_FOUND"),
+
+    USER_NOT_FOUND(308,  "USER_NOT_FOUND");
 
 
     private Integer code;
